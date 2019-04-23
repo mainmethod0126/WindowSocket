@@ -66,6 +66,7 @@ BEGIN_MESSAGE_MAP(CSocketClient01ForMFCDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_SEND, &CSocketClient01ForMFCDlg::OnBnClickedButtonSend)
+	ON_BN_CLICKED(IDOK, &CSocketClient01ForMFCDlg::OnBnClickedOk)
 END_MESSAGE_MAP()
 
 
@@ -348,10 +349,28 @@ void CSocketClient01ForMFCDlg::SendFrameData(SOCKET parm_hSocket, unsigned char 
 
 void CSocketClient01ForMFCDlg::OnBnClickedButtonSend()
 {
-	CString str;
-	GetDlgItemText(IDC_EDIT_CHET, str);
+	if (m_hSocket != INVALID_SOCKET)
+	{
+		CString str;
+		GetDlgItemText(IDC_EDIT_CHET, str);
 
-	// 채팅 데이터는 메세지 id가 1
-	SendFrameData(m_hSocket, 1, (const wchar_t*)str/*연산자 오버로딩 되어있어서 가능*/, (str.GetLength() + 1) * 2 /*문자열 뒤에 공백까지 포함해서 *2는 유니코드이기에 char 가 하나당 2byte이다 그렇기에*/);
+		// 채팅 데이터는 메세지 id가 1
+		SendFrameData(m_hSocket, 1, (const wchar_t*)str/*연산자 오버로딩 되어있어서 가능*/, (str.GetLength() + 1) * 2 /*문자열 뒤에 공백까지 포함해서 *2는 유니코드이기에 char 가 하나당 2byte이다 그렇기에*/);
+	}
+	else
+	{
+		AddEventString(_T("서버에 접속이 되지않은 상태입니다."));
+	}
 
+}
+
+
+void CSocketClient01ForMFCDlg::OnBnClickedOk()
+{
+	OnBnClickedButtonSend();
+	// 보내고 바로 다시
+	GotoDlgCtrl(GetDlgItem(IDC_EDIT_CHET));
+
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	//CDialogEx::OnOK();
 }

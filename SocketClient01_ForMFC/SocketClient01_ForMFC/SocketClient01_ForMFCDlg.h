@@ -52,4 +52,5 @@ private:
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 public:
 	afx_msg void OnBnClickedButtonSend();
+	afx_msg void OnBnClickedOk();
 };
