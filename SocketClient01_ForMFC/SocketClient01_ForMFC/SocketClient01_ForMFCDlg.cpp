@@ -106,7 +106,7 @@ BOOL CSocketClient01ForMFCDlg::OnInitDialog()
 	struct sockaddr_in srv_addr;
 
 	srv_addr.sin_family = AF_INET;
-	srv_addr.sin_addr.s_addr = inet_addr("192.168.159.128"); // 서버 listen 소켓의 ip주소
+	srv_addr.sin_addr.s_addr = inet_addr("192.168.245.131"); // 서버 listen 소켓의 ip주소
 	srv_addr.sin_port = htons(20001); // 서버 포트와 동일하게
 
 	// FD_CONNECT 서버 접속에대한 결과가 정해지면 m_hWnd에게 27001 번 요청
@@ -207,16 +207,78 @@ void CSocketClient01ForMFCDlg::DestroySocket()
 
 }
 
+// 데이터를 한번에 다 못받을 수 있으니
+// 데이터를 재요청하는 함수
+void CSocketClient01ForMFCDlg::ReceiveData(SOCKET parm_hSocket, char* parm_p_buffer, int parm_size)
+{
+	int current_size, total_size = 0, retry_count = 0;
+
+	// total_size 가 body_size 보다 작다면
+	// 다 받을때까지 아래 작업들을 반복해야한다.
+	while (total_size < parm_size)
+	{
+		// body_size 만큼 읽어서 p_body_date에 저장해라
+		// recv 함수는 반드시 성공하는 함수가 아니다
+		// 두 피씨간의 속도차이로 인해서 1000바이트를 보낸다고 해도 100~200~300 이런식으로 나눠서 들어와서 합산해서 1000바이트 들어오는 경우가 있다.
+		// 그렇기에 한번에 다 받아내지 못했을경우 재시도해서 다 받게만들어야한다.
+		// 읽다가 클라이언트가 끊어졌을 경우 current_size 에 에러값이 들어올수도 있다.
+		// body_size - total_size : 받아야하는 바디사이즈가 200인데 이미 100을 받았을 경우 또 200을 받으면 안되니까 100만큼만 받아야한다
+		// p_body_date + body_size : 받아서 저장할 메모리의 시작 주소인데 계속 처음부분에다가 쓰면 덮어쓰기니까
+		// 실제로 받은 사이즈 뒤에 다가 써야지 실제 모든 데이터를 받을 수 있음
+		current_size = recv(parm_hSocket, parm_p_buffer + total_size, parm_size - total_size, 0);
+
+		// 에러가 발생하자마자 브레이크 걸면 프로그램 깨질수도있다
+		// 에러가 발생하면 재시도를 몇번정도 진행해주자
+		if (current_size == SOCKET_ERROR)
+		{
+			retry_count++;
+			// 5번정도면 정말 빨리 재시도가 끝나기에 sleep으로 딜레이를 주자
+			// 근데 문제는 Sleep 존나 안좋은 방법 다른 좋은 방법도 있을것이다.
+			// 0.05초 6번이니까 0.3초정도 재시도시간을 준다
+			Sleep(50);
+			if (retry_count > 5) break;
+
+		}
+		else
+		{
+			// 에러가 났다가 말았다가 났다가 말았다가 할경우 에러 카운트를 초기화 해줘야한다.
+			retry_count = 0;
+
+			// 에러가 나지않았다면 받아온값을 누적해서
+			// 받은 토탈사이즈가 body_size와 같다면 데이터를 다 받았다는 소리다.
+			total_size = total_size + current_size;
+		}
+	}
+}
+
+
 void CSocketClient01ForMFCDlg::ReadFrameData()
 {
 	char key, message_id;
 	// 수신 데이터 1바이트만 가져온다 는 결국 헤더에서 맨앞
 	recv(m_hSocket, &key, 1, 0);
+	
 	if (key == 27) // 신뢰가능한 데이터 판단
 	{
 		unsigned short int body_size;
 		recv(m_hSocket, (char*)&body_size, 2, 0);
 		recv(m_hSocket, &message_id, 1, 0);
+
+		if (body_size > 0)
+		{
+			// 데이터 담을 버퍼 만들어주고
+			char* pBodyData = new char[body_size];
+
+			ReceiveData(m_hSocket, pBodyData, body_size);
+			
+			/*
+			if ()
+			{
+
+			}*/
+			
+			delete [] pBodyData;
+		}
 	}
 	else // 27이 아니면 잘못된 프로토콜
 	{

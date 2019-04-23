@@ -45,5 +45,7 @@ private:
 
 	void AddEventString(CString parmString);
 
+	void ReceiveData(SOCKET parm_hSocket, char* parm_p_buffer, int parm_size);
+
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 };
