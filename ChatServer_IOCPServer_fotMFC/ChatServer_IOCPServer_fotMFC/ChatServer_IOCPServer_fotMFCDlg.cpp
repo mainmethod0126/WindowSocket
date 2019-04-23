@@ -123,7 +123,10 @@ BOOL CChatServerIOCPServerfotMFCDlg::OnInitDialog()
 	// 노트북 같은경우는 무선, 유선 해서 랜카드가 보통 2개 둘다 ip가 다르게 부여되기에 어떤거를 사용하지 정해주어야함
 	// s_addr = 저장될때 1바이트짜리 4개의 정수로 저장되기 때문에 문자열을  ip처럼 바꿔줘야함 . 기준으로 자름
 	// "127.0.0.1" 자기 자신 네트워크
+	//srv_Addr.sin_addr.s_addr = inet_addr("192.168.245.131");
+
 	srv_Addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
 
 	// 아이피를 통해서 서버 PC에는 접근할 수 있는데 그 서버에서 어떤 프로그램에 접근할지는 Port를 통하여 구별가능
 	// 서버에 여러가지 네트워크 서비스가 이루어지고 있을 수 있으니 포트를 명시해줘야함
@@ -143,7 +146,7 @@ BOOL CChatServerIOCPServerfotMFCDlg::OnInitDialog()
 	// 1은 현재 접속을 받아주는 소켓이 동시에 여러 클라이언트가 접속했을때 한번에 몇명을 받을지, 5명접속해도 1명만 처리함 나머지는 다시 접속해야함
 	listen(m_hListenSocket, 1);
 
-	AddEventString(_T("클라이언트의 접속을 허락합니다 : "));
+	AddEventString(_T("클라이언트의 접속을 허락합니다.. "));
 
 
 	// accept()를 호출하면 스레드가 클라이언트가 접속할때까지 대기상태로 들어간다.
@@ -220,7 +223,7 @@ HCURSOR CChatServerIOCPServerfotMFCDlg::OnQueryDragIcon()
 
 void CChatServerIOCPServerfotMFCDlg::AcceptProcess(SOCKET parm_hSocket)
 {
-	if (m_nClinetCount >= MAX_CLIENT_COUNT)
+	if (m_nClinetCount <= MAX_CLIENT_COUNT)
 	{
 		// 소켓핸들이지만 프로그램에 소켓이 여러개일 수 있으니 가져온걸로 하나 만들어서 쓰는게 좋음
 		// 캐스팅 가능
@@ -347,6 +350,27 @@ void CChatServerIOCPServerfotMFCDlg::ReceiveData(SOCKET parm_hSocket, char* parm
 	}
 }
 
+// parm_p_Data 파일, 스트링, 등등 어떤거든 보낼 수 있도록 void*
+// parm_hSocket 을 이용해서 parm_p_Data 있는 데이터를 parm_Size 크기 만큼 보내겠다.
+void CChatServerIOCPServerfotMFCDlg::SendFrameData(SOCKET parm_hSocket, unsigned char parm_id, const void* parm_p_Data, int parm_Size)
+{
+	// + 4는 앞에 헤더가 4byte라서
+	char* p_send_data = new char[parm_Size + 4];
+
+	// 첫번째 1byte에 정상 프로토콜 확인 여부 27
+	p_send_data[0] = 27;
+	// 두번재 2byte에 넣기위해 2byte를 차지하도록 캐스팅하고 body 사이즈를 넣어주는 곳이니 parm_size넣어준다
+	*(unsigned short int*)(p_send_data + 1) = parm_Size;
+	// id값
+	*(p_send_data + 3) = parm_id;
+
+	memcpy(p_send_data + 4, parm_p_Data, parm_Size);
+
+	send(parm_hSocket, p_send_data, parm_Size + 4, 0);
+
+	delete[] p_send_data;
+
+}
 
 
 
@@ -418,9 +442,30 @@ LRESULT CChatServerIOCPServerfotMFCDlg::WindowProc(UINT message, WPARAM wParam, 
 					// 나중에 이게 1이면 채팅데이터가 2면 로그인 데이터다 이렇게 구분할거임
 					if (network_message_id == 1)
 					{
-						// 실제로 클라이언트가 보내준 데이터를 처리 (p_body_data);
-					}
+						CString str;
+						for (int i = 0; i < m_nClinetCount; i++)
+						{
+							if (hSocket == m_hClientlist[i])
+							{
+								// 서버측에서 붙여서 보내기, 클라이언트가 보내면 조작의 가능성이 있음
+								// "192.168.0.1 : abc"
+								str.Format(_T("%s : %s"), m_Client_IP[i], p_body_date);
+								break;
+							}
+						}
 
+						// 실제로 클라이언트가 보내준 데이터를 처리 (p_body_data);
+						AddEventString(str); // 유니코드 이기때문에 캐스팅해줘야한다
+						
+						// 접속된 모든 클라이언트한테 전송. 브로드캐스트
+						for (int i = 0; i <m_nClinetCount; i++)
+						{
+							// 모드 브로드캐스트
+							// 1 : 채팅데이터
+							// p_body_date : 클라이언트로부터 받은 데이터 그대로 다시보내기
+							SendFrameData(m_hClientlist[i], 1, (const wchar_t *)str, (str.GetLength() + 1) * 2);
+						}
+					}
 
 					delete[] p_body_date;
 				}
@@ -438,6 +483,7 @@ LRESULT CChatServerIOCPServerfotMFCDlg::WindowProc(UINT message, WPARAM wParam, 
 		{
 			// flag를 0으로 줘서 정상적으로
 			ClientCloseProcess(hSocket, 0);
+			AddEventString(_T("클라이언트가 접속을 해제했습니다."));
 		}
 	}
 

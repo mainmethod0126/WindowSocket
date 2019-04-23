@@ -37,6 +37,7 @@ private:
 	void ClientCloseProcess(SOCKET parm_hSocket, char parm_force_flag);
 	void ReceiveData(SOCKET parm_hSocket, char* parm_p_buffer, int parm_size);
 	void AddEventString(CString parm_string);
+	void SendFrameData(SOCKET parm_hSocket, unsigned char parm_id, const void* parm_p_Data, int parm_Size);
 
 // 구현입니다.
 protected:

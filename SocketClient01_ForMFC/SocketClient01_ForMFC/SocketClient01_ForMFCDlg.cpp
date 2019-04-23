@@ -108,7 +108,8 @@ BOOL CSocketClient01ForMFCDlg::OnInitDialog()
 	struct sockaddr_in srv_addr;
 
 	srv_addr.sin_family = AF_INET;
-	srv_addr.sin_addr.s_addr = inet_addr("192.168.245.131"); // 서버 listen 소켓의 ip주소
+	//srv_addr.sin_addr.s_addr = inet_addr("192.168.245.131"); // 서버 listen 소켓의 ip주소
+	srv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	srv_addr.sin_port = htons(20001); // 서버 포트와 동일하게
 
 	// FD_CONNECT 서버 접속에대한 결과가 정해지면 m_hWnd에게 27001 번 요청
