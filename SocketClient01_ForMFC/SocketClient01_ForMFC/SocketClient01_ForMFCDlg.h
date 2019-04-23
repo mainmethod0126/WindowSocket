@@ -36,6 +36,8 @@ private:
 
 	SOCKET m_hSocket;
 
+	void SendFrameData(SOCKET parm_hSocket, unsigned char parm_id, const void* parm_p_Data, int parm_Size);
+
 	void ReadFrameData();
 
 
@@ -48,4 +50,6 @@ private:
 	void ReceiveData(SOCKET parm_hSocket, char* parm_p_buffer, int parm_size);
 
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
+public:
+	afx_msg void OnBnClickedButtonSend();
 };

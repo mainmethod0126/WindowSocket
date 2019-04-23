@@ -65,6 +65,7 @@ BEGIN_MESSAGE_MAP(CSocketClient01ForMFCDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON_SEND, &CSocketClient01ForMFCDlg::OnBnClickedButtonSend)
 END_MESSAGE_MAP()
 
 
@@ -271,11 +272,11 @@ void CSocketClient01ForMFCDlg::ReadFrameData()
 
 			ReceiveData(m_hSocket, pBodyData, body_size);
 			
-			/*
-			if ()
+			
+			if (message_id == 1)
 			{
-
-			}*/
+				AddEventString((wchar_t*)pBodyData);
+			}
 			
 			delete [] pBodyData;
 		}
@@ -320,4 +321,37 @@ LRESULT CSocketClient01ForMFCDlg::WindowProc(UINT message, WPARAM wParam, LPARAM
 
 
 	return CDialogEx::WindowProc(message, wParam, lParam);
+}
+
+// parm_p_Data 파일, 스트링, 등등 어떤거든 보낼 수 있도록 void*
+// parm_hSocket 을 이용해서 parm_p_Data 있는 데이터를 parm_Size 크기 만큼 보내겠다.
+void CSocketClient01ForMFCDlg::SendFrameData(SOCKET parm_hSocket, unsigned char parm_id, const void* parm_p_Data, int parm_Size)
+{
+	// + 4는 앞에 헤더가 4byte라서
+	char* p_send_data = new char[parm_Size + 4];
+
+	// 첫번째 1byte에 정상 프로토콜 확인 여부 27
+	p_send_data[0] = 27;
+	// 두번재 2byte에 넣기위해 2byte를 차지하도록 캐스팅하고 body 사이즈를 넣어주는 곳이니 parm_size넣어준다
+	*(unsigned short int*)(p_send_data + 1) = parm_Size;
+	// id값
+	*(p_send_data + 3) = parm_id;
+
+	memcpy(p_send_data + 4, parm_p_Data, parm_Size);
+
+	send(parm_hSocket, p_send_data, parm_Size + 4, 0);
+
+	delete[] p_send_data;
+
+}
+
+
+void CSocketClient01ForMFCDlg::OnBnClickedButtonSend()
+{
+	CString str;
+	GetDlgItemText(IDC_EDIT_CHET, str);
+
+	// 채팅 데이터는 메세지 id가 1
+	SendFrameData(m_hSocket, 1, (const wchar_t*)str/*연산자 오버로딩 되어있어서 가능*/, (str.GetLength() + 1) * 2 /*문자열 뒤에 공백까지 포함해서 *2는 유니코드이기에 char 가 하나당 2byte이다 그렇기에*/);
+
 }
